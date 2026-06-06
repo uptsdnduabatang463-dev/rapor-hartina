@@ -58,7 +58,7 @@ interface KehadiranData {
 }
 
 const endpoint =
-  "https://script.google.com/macros/s/AKfycbzTWsQZ2gTTQtqH9I3Hhcu6VB3IEORdyjYbgzE7ddAH2gnteeNGA6Z0HZmQCKBYT4cP/exec";
+  "https://script.google.com/macros/s/AKfycbxglsE4PsQOIWG8dvb2XlKksSWKhpRMidIdFIdOfg-kdPxz-Pzvb1O2fY6hpkw9QOpZ/exec";
 
 const throttle = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -1023,9 +1023,20 @@ const InputNilai = () => {
   const fetchTPDetails = async (
     tpCode: string,
     mapel: string,
-    rowIndex: number
+    rowIndex: number,
+    kelas: string = "",
+    semester: string = ""
   ) => {
-    console.log("Fetching TP:", tpCode, "for Mapel:", mapel);
+    console.log(
+      "Fetching TP:",
+      tpCode,
+      "Mapel:",
+      mapel,
+      "Kelas:",
+      kelas,
+      "Semester:",
+      semester
+    );
 
     setLoadingTP(true);
     setShowTPPopup(true);
@@ -1034,15 +1045,14 @@ const InputNilai = () => {
     try {
       const url = `${endpoint}?sheet=DataTP&tp=${encodeURIComponent(
         tpCode
-      )}&mapel=${encodeURIComponent(mapel)}`;
-      console.log("Request URL:", url);
+      )}&mapel=${encodeURIComponent(mapel)}&kelas=${encodeURIComponent(
+        kelas
+      )}&semester=${encodeURIComponent(semester)}`;
 
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch TP details");
 
       const tpData = await response.json();
-      console.log("Response data:", tpData);
-
       setTPDetails(tpData);
     } catch (err) {
       console.error("Error fetching TP details:", err);
@@ -2495,7 +2505,10 @@ const InputNilai = () => {
                         const tpCode =
                           displayHeaders[headers.indexOf(currentHeader)];
                         const mapel = actualData[0]?.Data1 || "";
-                        fetchTPDetails(tpCode, mapel, 0);
+                        const kelasRaw = actualData[0]?.Data3 || "";
+                        const kelas = kelasRaw.replace(/[^0-9]/g, ""); // "6A" → "6"
+                        const semester = actualData[0]?.Data2 || "";
+                        fetchTPDetails(tpCode, mapel, 0, kelas, semester);
                       }
                     }}
                     style={{
@@ -9203,6 +9216,28 @@ const DataEkstrakurikuler = () => {
                         >
                           {row[header] || ""}
                         </div>
+                      ) : header === "Data2" ? (
+                        <select
+                          value={row[header] || ""}
+                          onChange={(e) =>
+                            handleInputChange(rowIndex, header, e.target.value)
+                          }
+                          disabled={!isEditing}
+                          style={{
+                            width: "100%",
+                            padding: "4px 2px",
+                            border: "1px solid #ddd",
+                            borderRadius: "3px",
+                            boxSizing: "border-box" as const,
+                            backgroundColor: isEditing ? "white" : "#f5f5f5",
+                            cursor: isEditing ? "pointer" : "not-allowed",
+                            fontSize: "12px",
+                            textAlign: "center",
+                          }}
+                        >
+                          <option value="">-- Pilih --</option>
+                          <option value="PRAMUKA">PRAMUKA</option>
+                        </select>
                       ) : (
                         <input
                           type="text"
@@ -9217,7 +9252,7 @@ const DataEkstrakurikuler = () => {
                             padding: "4px 2px",
                             border: "1px solid #ddd",
                             borderRadius: "3px",
-                            boxSizing: "border-box",
+                            boxSizing: "border-box" as const,
                             backgroundColor: isEditing ? "white" : "#f5f5f5",
                             cursor: isEditing ? "text" : "not-allowed",
                             fontSize: "12px",
@@ -11789,14 +11824,13 @@ const RekapNilai = () => {
           ? `Rekap_Nilai_Semua_Kelas_Sem${selectedSemester}.xlsx`
           : `Rekap_Nilai_Kelas${selectedKelas}_Sem${selectedSemester}.xlsx`;
 
-      // ✅ GANTI dengan ini:
-      const wbout = XLSX.write(workbook, { 
-        bookType: "xlsx", 
-        type: "array" 
+      const wbout = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
       });
 
-      const blob = new Blob([wbout], { 
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      const blob = new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
       const url = URL.createObjectURL(blob);
@@ -11811,7 +11845,6 @@ const RekapNilai = () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 1000);
-
     } catch (err) {
       alert(
         "❌ Gagal membuat Excel: " +
